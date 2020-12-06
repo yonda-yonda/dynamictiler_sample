@@ -1,10 +1,12 @@
 import os
+import re
+import math
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
 import uvicorn
-from fastapi import FastAPI, Path, Query
+from fastapi import FastAPI, Path, Query, HTTPException
 from fastapi.staticfiles import StaticFiles
 from rasterio.crs import CRS
 from starlette.background import BackgroundTask
@@ -17,6 +19,9 @@ from rio_tiler.profiles import img_profiles
 from rio_tiler.utils import render
 from rio_tiler.io import COGReader
 from rio_tiler.mosaic import mosaic_reader
+from rio_tiler.tasks import multi_arrays
+from rio_tiler.models import ImageData
+from rio_tiler.errors import TileOutsideBounds
 from rio_tiler.colormap import cmap
 
 import numpy as np
@@ -146,3 +151,57 @@ def flood(
     img = render(water, mask, img_format=driver, **options)
 
     return TileResponse(img, media_type=mimetype[format.value])
+
+
+@app.get("/landsat8_tile/{z}/{x}/{y}", **tile_routes_params)
+def landsat8_tile(
+    z: int,
+    x: int,
+    y: int,
+    base_url: str = Query(..., description="Landsat-8 Base URL."),
+    a: Union[int, float] = Query(40, description="Coefficient 'a' Of Sigmoid Filter."),
+    b: Union[int, float] = Query(0.15, description="Coefficient 'b' Of Sigmoid Filter."),
+):
+    mlt_path = '{}_MTL.txt'.format(base_url)
+    if base_url.startswith('http') or base_url.startswith('//:'):
+        r = requests.get(mlt_path)
+        mlt = r.text
+    else:
+        with open(mlt_path) as f:
+            mlt = f.read()
+
+    REFLECTANCE_MULT_BANDS = re.findall('REFLECTANCE_MULT_BAND_\d+\s+=\s+(.*)\n', mlt)
+    REFLECTANCE_ADD_BANDS = re.findall('REFLECTANCE_ADD_BAND_\d+\s+=\s+(.*)\n', mlt)
+    SUN_ELEVATION = re.findall('SUN_ELEVATION\s+=\s+(.*)\n', mlt)
+    denominator = math.sin(math.radians(float(SUN_ELEVATION[0])))
+
+    bands = [{
+            'url':'{}_B{}.TIF'.format(base_url, band),
+            'mult': float(REFLECTANCE_MULT_BANDS[band - 1]),
+            'add': float(REFLECTANCE_ADD_BANDS[band - 1]),
+            'denominator': denominator
+        } for band in [4,3,2]]
+
+    def _reader(band, *args: Any, **kwargs: Any):
+        with COGReader(band['url']) as cog:
+            try:
+                tile, mask = cog.tile(x, y, z, tilesize=256)
+                mask[tile[0] == 0] = 0
+                tile = (tile * band['mult'] + band['add'])/band['denominator']
+                tile[tile < 0] = 0                
+                return ImageData(tile, mask)
+            except TileOutsideBounds as e:
+                raise HTTPException(status_code=404, detail=str(e))
+
+    output = multi_arrays(bands, _reader)
+
+    f0 = 1/(1 + np.exp(a*b))
+    f1 = 1/(1 + np.exp(a*(b - 1)))
+    tile = ((255/(1 + np.exp(a*(b - output.data))) - f0) / (f1 - f0)).astype(np.uint8)
+    mask = output.mask
+
+    driver = "PNG"
+    options = img_profiles.get(driver.lower(), {})
+    img = render(tile, mask, img_format=driver, **options)
+
+    return TileResponse(img, media_type="image/png")

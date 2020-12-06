@@ -1,0 +1,8 @@
+cog/*.tif
+cog/*.TIF
+cog/*.tiff
+cog/*.TIFF
+cog/*.txt
+cog/*.TXT
+__pycache__
+.python-version

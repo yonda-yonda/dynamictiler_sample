@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+	<link rel="stylesheet"
+		href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/css/ol.css" type="text/css">
+	<style>
+		.map {
+			height: 480px;
+			width: 100%;
+		}
+	</style>
+	<script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/build/ol.js"></script>
+	<title>OpenLayers example</title>
+</head>
+
+<body>
+	<div id="map" class="map"></div>
+	<script type="text/javascript">
+		var sample = new ol.layer.Tile({
+			source: new ol.source.XYZ({
+				maxZoom: 12,
+				url: "../landsat8_tile/{z}/{x}/{y}?a=50&b=0.15&base_url=cog/LC08_L1TP_139046_20170304_20170316_01_T1",
+				crossOrigin: 'anonymous'
+			})
+		});
+		var map = new ol.Map({
+			target: 'map',
+			layers: [
+				new ol.layer.Tile({
+					source: new ol.source.OSM()
+				}),
+				sample,
+				new ol.layer.Graticule({
+					strokeStyle: new ol.style.Stroke({
+						color: 'rgba(255,120,0,0.9)',
+						width: 2,
+						lineDash: [0.5, 4],
+					}),
+					showLabels: true,
+					wrapX: false,
+				})
+			],
+			view: new ol.View({
+				center: ol.proj.fromLonLat([86.5, 20.5]),
+				zoom: 8
+			})
+		});
+	</script>
+</body>
+
+</html>

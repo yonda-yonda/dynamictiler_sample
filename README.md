@@ -24,3 +24,18 @@ uvicorn app:app --reload
 ```
 
 access to `http://127.0.0.1:8000/pages/dsm.html?max=1500&min=0&depth=15`
+
+# landsat8
+## download Landsat-8
+download B2,B3,B4,MLT.TXT files from [LC08_L1TP_139046_20170304_20170316_01_T1](https://landsat-pds.s3.amazonaws.com/c1/L8/139/046/LC08_L1TP_139046_20170304_20170316_01_T1/index.html).
+
+save at cog directory.
+
+## exec
+```
+uvicorn app:app --reload
+```
+
+access to `http://127.0.0.1:8000/pages/landsat8_tile.html?a=20&b=0.2`
+
+a, b are Sigmoid filter parameters.
