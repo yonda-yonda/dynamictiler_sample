@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+	<link rel="stylesheet"
+		href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/css/ol.css" type="text/css">
+	<style>
+		.map {
+			height: 480px;
+			width: 100%;
+		}
+	</style>
+	<script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/build/ol.js"></script>
+	<title>DSM example</title>
+</head>
+
+<body>
+	<div id="map" class="map"></div>
+	<dl>
+		<dt>DSM</dt>
+		<dd>
+			<div>
+				<label><input type="checkbox" name="dsm_display" id="dsm_display" value="show">表示</label>
+			</div>
+			<div>
+				不透明度 <input type="number" name="dsm_opacity" id="dsm_opacity" min="0" max="100" value="100">
+			</div>
+		</dd>
+	</dl>
+	<dl>
+		<dt>浸水域</dt>
+		<dd>
+			<div><label><input type="checkbox" name="flood_display" id="flood_display">表示</label>
+			</div>
+			<div>
+				不透明度 <input type="number" name="flood_opacity" id="flood_opacity" min="0" max="100" value="100">
+			</div>
+		</dd>
+	</dl>
+	<script type="text/javascript">
+		var queries = window.location.search.slice(1).split('&');
+		var params = {};
+		for (var i = 0; i < queries.length; i++) {
+			var kv = queries[i].split('=');
+			params[kv[0]] = kv[1];
+		}
+		var max = params.hasOwnProperty('max') ? parseFloat(params.max) : 3000;
+		var depth = params.hasOwnProperty('depth') ? parseFloat(params.depth) : 10;
+
+		var extent = ol.proj.transformExtent([138, 35, 141, 37], 'EPSG:4326', 'EPSG:3857');
+		var dsm = new ol.layer.Tile({
+			extent: extent,
+			visible: false,
+			source: new ol.source.XYZ({
+				attributions: "提供：JAXA",
+				maxZoom: 12,
+				url: "../dsm/{z}/{x}/{y}?max=" + max,
+				crossOrigin: 'anonymous'
+			})
+		});
+		var flood = new ol.layer.Tile({
+			extent: extent,
+			visible: false,
+			source: new ol.source.XYZ({
+				attributions: "提供：JAXA",
+				maxZoom: 12,
+				url: "../flood/{z}/{x}/{y}?depth=" + depth,
+				crossOrigin: 'anonymous'
+			})
+		});
+		var map = new ol.Map({
+			target: 'map',
+			layers: [
+				new ol.layer.Tile({
+					source: new ol.source.OSM()
+				}),
+				dsm,
+				flood,
+				new ol.layer.Graticule({
+					strokeStyle: new ol.style.Stroke({
+						color: 'rgba(255,120,0,0.9)',
+						width: 2,
+						lineDash: [0.5, 4],
+					}),
+					showLabels: true,
+					wrapX: false,
+				})
+			],
+			view: new ol.View({
+				center: ol.proj.fromLonLat([139.5, 36]),
+				zoom: 8
+			})
+		});
+		document.getElementById('dsm_display').addEventListener('change', function (event) {
+			dsm.setVisible(event.target.checked)
+		});
+		document.getElementById('dsm_opacity').addEventListener('change', function (event) {
+			dsm.setOpacity(parseFloat(event.target.value) / 100)
+		});
+		document.getElementById('flood_display').addEventListener('change', function (event) {
+			flood.setVisible(event.target.checked)
+		});
+		document.getElementById('flood_opacity').addEventListener('change', function (event) {
+			flood.setOpacity(parseFloat(event.target.value) / 100)
+		});
+	</script>
+</body>
+
+</html>
