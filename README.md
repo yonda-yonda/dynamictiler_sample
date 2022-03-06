@@ -1,7 +1,11 @@
 # dynamictiler_sample
 
+install gdal. (ex: anaconda)
+
+install rio-tiler
+
 ```sh
-pipenv install fastapi uvicorn aiofiles rio-tiler==2.0.0rc3
+pipenv install fastapi uvicorn aiofiles rio-tiler
 ```
 
 # dsm

@@ -1,4 +1,4 @@
-import os
+import requests
 import re
 import math
 from enum import Enum
@@ -161,7 +161,9 @@ def landsat8_tile(
     base_url: str = Query(..., description="Landsat-8 Base URL."),
     a: Union[int, float] = Query(40, description="Coefficient 'a' Of Sigmoid Filter."),
     b: Union[int, float] = Query(0.15, description="Coefficient 'b' Of Sigmoid Filter."),
+    ext: str = Query("tiff", description="file extension"),
 ):
+    print(base_url)
     mlt_path = '{}_MTL.txt'.format(base_url)
     if base_url.startswith('http') or base_url.startswith('//:'):
         r = requests.get(mlt_path)
@@ -176,7 +178,7 @@ def landsat8_tile(
     denominator = math.sin(math.radians(float(SUN_ELEVATION[0])))
 
     bands = [{
-            'url':'{}_B{}.TIF'.format(base_url, band),
+            'url':'{}_B{}.{}'.format(base_url, band, ext),
             'mult': float(REFLECTANCE_MULT_BANDS[band - 1]),
             'add': float(REFLECTANCE_ADD_BANDS[band - 1]),
             'denominator': denominator
