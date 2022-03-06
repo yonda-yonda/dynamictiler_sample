@@ -43,3 +43,18 @@ uvicorn app:app --reload
 access to `http://127.0.0.1:8000/pages/landsat8_tile.html?a=20&b=0.2`
 
 a, b are Sigmoid filter parameters.
+
+
+# polar
+Demo of EPSG:4326 grid.
+
+1. View EPSG:3976
+1. Request tile at EPSG:4326
+1. Tiler loads EPSG:3031 TIFF and convert to EPSG:4326 png.
+
+## exec
+```
+uvicorn app:app --reload
+```
+
+access to `http://127.0.0.1:8000/pages/polar.html`

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+	<link rel="stylesheet"
+		href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.12.0/css/ol.css" type="text/css">
+	<style>
+		.map {
+			height: 480px;
+			width: 100%;
+		}
+	</style>
+	<script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.12.0/build/ol.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.6.2/proj4.min.js"></script>
+	<title>Polar example</title>
+</head>
+
+<body>
+	<div id="map" class="map"></div>
+
+	<script type="text/javascript">
+		proj4.defs(
+		"EPSG:3976",
+		"+proj=stere +lat_0=-90 +lat_ts=-70 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs "
+		);
+		ol.proj.proj4.register(proj4);
+
+		const maxResolution = 360 / 256;
+		const defaultResolutions = [];
+		for (let i = 0; i < 14; ++i) {
+			defaultResolutions[i] = maxResolution / Math.pow(2, i + 1);
+		}
+  		const size = 256;
+		const tileGrid = new ol.tilegrid.TileGrid({
+			extent: [-180, -90, 180, 90],
+			tileSize: size,
+			resolutions: defaultResolutions,
+		});
+		const layer = new ol.layer.Tile({
+			source: new ol.source.XYZ({
+				projection: "EPSG:4326",
+				url: "../polar/{z}/{x}/{y}",
+				tileGrid,
+				transition: 0,
+			}),
+		});		
+		const map = new ol.Map({
+			target: 'map',
+			layers: [
+				new ol.layer.Tile({
+					source: new ol.source.OSM()
+				}),
+				layer,
+			],
+			view: new ol.View({
+				center: [0, 0],
+				zoom: 2,
+				projection: "EPSG:3976"
+			})
+		});
+	</script>
+</body>
+
+</html>

@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
-import uvicorn
+import morecantile
 from fastapi import FastAPI, Path, Query, HTTPException
 from fastapi.staticfiles import StaticFiles
 from rasterio.crs import CRS
@@ -163,7 +163,6 @@ def landsat8_tile(
     b: Union[int, float] = Query(0.15, description="Coefficient 'b' Of Sigmoid Filter."),
     ext: str = Query("tiff", description="file extension"),
 ):
-    print(base_url)
     mlt_path = '{}_MTL.txt'.format(base_url)
     if base_url.startswith('http') or base_url.startswith('//:'):
         r = requests.get(mlt_path)
@@ -202,8 +201,30 @@ def landsat8_tile(
     tile = ((255/(1 + np.exp(a*(b - output.data))) - f0) / (f1 - f0)).astype(np.uint8)
     mask = output.mask
 
-    driver = "PNG"
+    format = ImageType.png
+    driver = drivers[format.value]
     options = img_profiles.get(driver.lower(), {})
     img = render(tile, mask, img_format=driver, **options)
 
     return TileResponse(img, media_type="image/png")
+
+
+
+wgs84_grid = morecantile.tms.get("WorldCRS84Quad")  
+@app.get("/polar/{z}/{x}/{y}", **tile_routes_params)
+def polar_tile(
+    z: int,
+    x: int,
+    y: int,
+):
+    with COGReader("./src/3031.tiff", tms=wgs84_grid) as cog:
+        try:
+            tile, mask = cog.tile(x, y, z, tilesize=256)           
+            driver = "PNG"
+            options = img_profiles.get(driver.lower(), {})
+            mask[tile[0] == -9999] = 0
+            tile = tile.astype(np.uint8)
+            img = render(tile, mask, img_format=driver, **options)
+            return TileResponse(img, media_type="image/png")
+        except TileOutsideBounds as e:
+            raise HTTPException(status_code=404, detail=str(e))
